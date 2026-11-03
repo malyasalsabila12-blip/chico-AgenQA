@@ -1,0 +1,73 @@
+{
+  "mcpServers": {
+    "mobile-mcp": {
+      "command": "node",
+      "args": [
+        "path/to/mobile-mcp-server/index.js"
+      ],
+      "env": {
+        "API_KEY": "PLACEHOLDER_API_KEY",
+        "DEVICE_ID": "PLACEHOLDER_DEVICE_ID"
+      }
+    },
+    "atlassian": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "@atlassian/mcp@latest"
+      ]
+    },
+    "docker": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "@docker/mcp@latest"
+      ]
+    },
+    "github": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "@modelcontextprotocol/server-github"
+      ],
+      "env": {
+        "GITHUB_PERSONAL_ACCESS_TOKEN": "your_token_here"
+      }
+    },
+    "playwright": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "@modelcontextprotocol/server-playwright"
+      ]
+    },
+    "proxy": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "@sparfenyuk/mcp-proxy@latest"
+      ]
+    },
+    "google-search": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "@modelcontextprotocol/server-google-search"
+      ],
+      "env": {
+        "GOOGLE_API_KEY": "PLACEHOLDER_GOOGLE_API_KEY",
+        "GOOGLE_CX_ID": "PLACEHOLDER_GOOGLE_CX_ID"
+      }
+    },
+    "postgres": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "@modelcontextprotocol/server-postgres"
+      ],
+      "env": {
+        "DATABASE_URL": "postgresql://user:pass@localhost:5432/dbname"
+      }
+    }
+  }
+}

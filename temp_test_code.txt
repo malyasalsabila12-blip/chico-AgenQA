@@ -1,0 +1,217 @@
+from playwright.sync_api import sync_playwright, Page, expect
+import time
+import allure
+import pytest
+
+@allure.step("User logs in with username: {username}")
+def login(page: Page, username: str, password: str, url: str):
+    page.goto(url)
+    page.fill("#user-name", username)
+    page.fill("#password", password)
+    page.click("#login-button")
+    page.wait_for_load_state("domcontentloaded")
+
+@allure.step("Add item to cart: {item_name}")
+def add_item_to_cart(page: Page, item_name: str):
+    # This assumes we are on the products page after login
+    item_locator = page.locator(f"div.inventory_item:has-text('{item_name}')")
+    item_locator.locator("button:has-text('Add to cart')").click()
+    time.sleep(2) # Increased wait to observe
+
+@allure.step("Go to cart page")
+def go_to_cart(page: Page):
+    page.locator(".shopping_cart_link").click()
+    page.wait_for_url("**/cart.html")
+    time.sleep(2) # Increased wait to observe
+
+@allure.step("Fill checkout information: {first_name} {last_name} {zip_code}")
+def fill_checkout_info(page: Page, first_name: str, last_name: str, zip_code: str):
+    page.fill("#first-name", first_name)
+    page.fill("#last-name", last_name)
+    page.fill("#postal-code", zip_code)
+    page.click("#continue")
+    page.wait_for_url("**/checkout-step-one.html")
+    time.sleep(2) # Increased wait to observe
+
+@allure.step("Complete the order")
+def complete_order(page: Page):
+    page.click("#finish")
+    page.wait_for_url("**/checkout-complete.html")
+    time.sleep(2) # Increased wait to observe
+
+@allure.step("Log out from the application")
+def logout(page: Page):
+    page.click("#react-burger-menu-btn")
+    page.locator("#logout_sidebar_link").click()
+    page.wait_for_url("**/index.html")
+    time.sleep(2) # Increased wait to observe
+
+
+sample_url = "https://www.saucedemo.com/"
+
+test_cases = [
+    "Verify standard_user can log in successfully with correct credentials.",
+    "Verify standard_user can add 'Sauce Labs Backpack' to cart from product page.",
+    "Verify standard_user can navigate to cart and see added item.",
+    "Verify standard_user can proceed to checkout after adding items to cart.",
+    "Verify standard_user can fill in checkout information (First Name, Last Name, Zip/Postal Code) and continue.",
+    "Verify standard_user can complete the order successfully after reviewing items.",
+    "Verify standard_user can log out successfully from the product page.",
+    "Verify standard_user can view product details page after clicking on a product.",
+    "Verify that clicking on the shopping cart icon redirects to the cart page.",
+    "Verify error message is displayed when logging in with invalid username and valid password.",
+    "Verify error message is displayed when logging in with valid username and invalid password.",
+    "Verify error message is displayed when logging in with invalid username and invalid password.",
+    "Verify error message is displayed when logging in with empty username and empty password.",
+    "Verify locked_out_user cannot log in and sees specific error message.",
+    "Verify user cannot proceed to checkout without adding any items to cart.",
+    "Verify error message is displayed when checkout information (First Name) is missing."
+]
+
+@allure.feature('SauceDemo E-commerce Features')
+@pytest.mark.parametrize('test_case', test_cases)
+def test_saucedemo_scenario(page: Page, test_case: str):
+    allure.dynamic.title(test_case)
+    allure.dynamic.description(f'Executing test case: {test_case}')
+
+    try:
+        if 'log in successfully with correct credentials' in test_case.lower() and 'standard_user' in test_case.lower():
+            login(page, 'standard_user', 'secret_sauce', sample_url)
+            expect(page).to_have_url('https://www.saucedemo.com/inventory.html')
+            allure.attach(page.screenshot(full_page=True), name='Successful Login', attachment_type=allure.attachment_type.PNG)
+
+        elif 'error message is displayed when logging in with invalid username and valid password' in test_case.lower():
+            login(page, 'invalid_user', 'secret_sauce', sample_url)
+            error_message_locator = page.locator('[data-test="error"]')
+            expect(error_message_locator).to_be_visible()
+            expect(error_message_locator).to_have_text('Epic sadface: Username and password do not match any user in this service')
+            allure.attach(page.screenshot(full_page=True), name='Invalid Username Login', attachment_type=allure.attachment_type.PNG)
+
+        elif 'error message is displayed when logging in with valid username and invalid password' in test_case.lower():
+            login(page, 'standard_user', 'invalid_password', sample_url)
+            error_message_locator = page.locator('[data-test="error"]')
+            expect(error_message_locator).to_be_visible()
+            expect(error_message_locator).to_have_text('Epic sadface: Username and password do not match any user in this service')
+            allure.attach(page.screenshot(full_page=True), name='Invalid Password Login', attachment_type=allure.attachment_type.PNG)
+
+        elif 'error message is displayed when logging in with invalid username and invalid password' in test_case.lower():
+            login(page, 'invalid_user', 'invalid_password', sample_url)
+            error_message_locator = page.locator('[data-test="error"]')
+            expect(error_message_locator).to_be_visible()
+            expect(error_message_locator).to_have_text('Epic sadface: Username and password do not match any user in this service')
+            allure.attach(page.screenshot(full_page=True), name='Invalid Username and Password Login', attachment_type=allure.attachment_type.PNG)
+
+        elif 'error message is displayed when logging in with empty username and empty password' in test_case.lower():
+            login(page, '', '', sample_url)
+            error_message_locator = page.locator('[data-test="error"]')
+            expect(error_message_locator).to_be_visible()
+            expect(error_message_locator).to_have_text('Epic sadface: Username is required')
+            allure.attach(page.screenshot(full_page=True), name='Empty Credentials Login', attachment_type=allure.attachment_type.PNG)
+
+        elif 'locked_out_user cannot log in and sees specific error message' in test_case.lower():
+            login(page, 'locked_out_user', 'secret_sauce', sample_url)
+            error_message_locator = page.locator('[data-test="error"]')
+            expect(error_message_locator).to_be_visible()
+            expect(error_message_locator).to_have_text('Epic sadface: Sorry, this user has been locked out.')
+            allure.attach(page.screenshot(full_page=True), name='Locked Out User Login', attachment_type=allure.attachment_type.PNG)
+
+        elif 'add \'sauce labs backpack\' to cart from product page' in test_case.lower():
+            login(page, 'standard_user', 'secret_sauce', sample_url)
+            expect(page).to_have_url('https://www.saucedemo.com/inventory.html')
+            add_item_to_cart(page, 'Sauce Labs Backpack')
+            expect(page.locator('.shopping_cart_badge')).to_have_text('1')
+            allure.attach(page.screenshot(full_page=True), name='Add Item to Cart', attachment_type=allure.attachment_type.PNG)
+
+        elif 'navigate to cart and see added item' in test_case.lower():
+            login(page, 'standard_user', 'secret_sauce', sample_url)
+            expect(page).to_have_url('https://www.saucedemo.com/inventory.html')
+            add_item_to_cart(page, 'Sauce Labs Backpack')
+            go_to_cart(page)
+            expect(page).to_have_url('https://www.saucedemo.com/cart.html')
+            expect(page.locator('div.cart_item:has-text(\'Sauce Labs Backpack\')')).to_be_visible()
+            allure.attach(page.screenshot(full_page=True), name='Navigate to Cart', attachment_type=allure.attachment_type.PNG)
+
+        elif 'proceed to checkout after adding items to cart' in test_case.lower():
+            login(page, 'standard_user', 'secret_sauce', sample_url)
+            expect(page).to_have_url('https://www.saucedemo.com/inventory.html')
+            add_item_to_cart(page, 'Sauce Labs Backpack')
+            go_to_cart(page)
+            page.click('#checkout')
+            expect(page).to_have_url('https://www.saucedemo.com/checkout-step-one.html')
+            allure.attach(page.screenshot(full_page=True), name='Proceed to Checkout', attachment_type=allure.attachment_type.PNG)
+
+        elif 'fill in checkout information' in test_case.lower() and 'continue' in test_case.lower():
+            login(page, 'standard_user', 'secret_sauce', sample_url)
+            expect(page).to_have_url('https://www.saucedemo.com/inventory.html')
+            add_item_to_cart(page, 'Sauce Labs Backpack')
+            go_to_cart(page)
+            page.click('#checkout')
+            fill_checkout_info(page, 'John', 'Doe', '12345')
+            expect(page).to_have_url('https://www.saucedemo.com/checkout-step-two.html')
+            allure.attach(page.screenshot(full_page=True), name='Fill Checkout Info', attachment_type=allure.attachment_type.PNG)
+        
+        elif 'complete the order successfully after reviewing items' in test_case.lower():
+            login(page, 'standard_user', 'secret_sauce', sample_url)
+            expect(page).to_have_url('https://www.saucedemo.com/inventory.html')
+            add_item_to_cart(page, 'Sauce Labs Backpack')
+            go_to_cart(page)
+            page.click('#checkout')
+            fill_checkout_info(page, 'John', 'Doe', '12345')
+            complete_order(page)
+            expect(page).to_have_url('https://www.saucedemo.com/checkout-complete.html')
+            expect(page.locator('.complete-header')).to_have_text('Thank you for your order!')
+            allure.attach(page.screenshot(full_page=True), name='Complete Order', attachment_type=allure.attachment_type.PNG)
+
+        elif 'log out successfully from the product page' in test_case.lower():
+            login(page, 'standard_user', 'secret_sauce', sample_url)
+            expect(page).to_have_url('https://www.saucedemo.com/inventory.html')
+            logout(page)
+            expect(page).to_have_url('https://www.saucedemo.com/index.html')
+            expect(page.locator('.login_logo')).to_be_visible()
+            allure.attach(page.screenshot(full_page=True), name='Logout', attachment_type=allure.attachment_type.PNG)
+
+        elif 'view product details page after clicking on a product' in test_case.lower():
+            login(page, 'standard_user', 'secret_sauce', sample_url)
+            expect(page).to_have_url('https://www.saucedemo.com/inventory.html')
+            page.locator('div.inventory_item_name:has-text(\'Sauce Labs Backpack\')').click()
+            expect(page).to_have_url(r'/inventory-item.html\?id=\d+')
+            expect(page.locator('.inventory_details_name')).to_have_text('Sauce Labs Backpack')
+            allure.attach(page.screenshot(full_page=True), name='View Product Details', attachment_type=allure.attachment_type.PNG)
+
+        elif 'that clicking on the shopping cart icon redirects to the cart page.' in test_case.lower():
+            login(page, 'standard_user', 'secret_sauce', sample_url)
+            expect(page).to_have_url('https://www.saucedemo.com/inventory.html')
+            page.locator('.shopping_cart_link').click()
+            expect(page).to_have_url('https://www.saucedemo.com/cart.html')
+            allure.attach(page.screenshot(full_page=True), name='Shopping Cart Redirect', attachment_type=allure.attachment_type.PNG)
+
+        elif 'user cannot proceed to checkout without adding any items to cart' in test_case.lower():
+            login(page, 'standard_user', 'secret_sauce', sample_url)
+            expect(page).to_have_url('https://www.saucedemo.com/inventory.html')
+            go_to_cart(page) # Cart should be empty
+            page.click('#checkout')
+            expect(page).to_have_url('https://www.saucedemo.com/cart.html') # Expect to remain on cart page
+            allure.attach(page.screenshot(full_page=True), name='Checkout with Empty Cart', attachment_type=allure.attachment_type.PNG)
+
+        elif 'error message is displayed when checkout information (first name) is missing' in test_case.lower():
+            login(page, 'standard_user', 'secret_sauce', sample_url)
+            expect(page).to_have_url('https://www.saucedemo.com/inventory.html')
+            add_item_to_cart(page, 'Sauce Labs Backpack')
+            go_to_cart(page)
+            page.click('#checkout')
+            page.fill('#last-name', 'Doe')
+            page.fill('#postal-code', '12345')
+            page.click('#continue')
+            error_message_locator = page.locator('[data-test="error"]')
+            expect(error_message_locator).to_be_visible()
+            expect(error_message_locator).to_have_text('Error: First Name is required')
+            allure.attach(page.screenshot(full_page=True), name='Missing First Name Checkout', attachment_type=allure.attachment_type.PNG)
+        else:
+            pytest.skip(f'Test case interpretation not implemented yet: {test_case}')
+
+    except AssertionError as e:
+        allure.attach(page.screenshot(full_page=True), name='Failure Screenshot', attachment_type=allure.attachment_type.PNG)
+        pytest.fail(f'Test failed: {e}')
+    except Exception as e:
+        allure.attach(page.screenshot(full_page=True), name='Error Screenshot', attachment_type=allure.attachment_type.PNG)
+        pytest.fail(f'An unexpected error occurred: {e}')
